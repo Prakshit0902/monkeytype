@@ -53,7 +53,7 @@ export type LeaderboardSearch = z.infer<typeof LeaderboardSearchSchema>;
 // the last shown selection, used when opening the leaderboards without one.
 // the leaderboards page sets it (useLeaderboardSearch)
 const [getLastSelection, setLastSelection] = createRoot(() => lsSelection());
-export { setLastSelection };
+export { getLastSelection, setLastSelection };
 
 /** The search params showing `selection` on the 0-based `page`. */
 export function toLeaderboardSearch(

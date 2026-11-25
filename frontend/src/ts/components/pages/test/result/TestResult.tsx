@@ -14,10 +14,19 @@ import { getConfig } from "../../../../config/store";
 import { useRefWithUtils } from "../../../../hooks/useRefWithUtils";
 import { getAdBlock, getCookieBlocker } from "../../../../states/ads";
 import { getIsScreenshotting, isAuthenticated } from "../../../../states/core";
+import {
+  clearGhostRun,
+  getActiveGhostRun,
+  isGhostRaceActive,
+} from "../../../../states/ghost-race";
 import { getGlarsesMode } from "../../../../states/glarses-mode";
 import { resultState } from "../../../../states/result";
 import { getSnapshot } from "../../../../states/snapshot";
-import { getLastEventLog, getLastResult } from "../../../../states/test";
+import {
+  CompletedResult,
+  getLastEventLog,
+  getLastResult,
+} from "../../../../states/test";
 import { restartTest, retrySavingResult } from "../../../../test/test-logic";
 import { setResultElement } from "../../../../test/test-ui";
 import { cn } from "../../../../utils/cn";
@@ -83,6 +92,7 @@ export function TestResult(): JSXElement {
         {(test) => (
           <div id="resultScreenshotTarget">
             <Show when={!getGlarsesMode()}>
+              <GhostRaceComparisonCard result={test().result} />
               <div class={cn("mb-4 grid gap-4 md:grid-cols-[auto_1fr]")}>
                 <ResultMainStats
                   result={test().result}
@@ -116,6 +126,88 @@ function LoginPrompt(): JSXElement {
       <div class="mb-4 text-center text-sub">
         <Link to="/login">Sign in</Link> to save your result
       </div>
+    </Show>
+  );
+}
+
+function GhostRaceComparisonCard(props: {
+  result: CompletedResult;
+}): JSXElement {
+  const ghost = getActiveGhostRun;
+
+  return (
+    <Show when={isGhostRaceActive() && ghost()}>
+      {(g) => {
+        const delta = Number((props.result.wpm - g().wpm).toFixed(2));
+        const isVictory = delta >= 0;
+
+        return (
+          <div class="mb-4 rounded-lg bg-sub-alt p-4 text-center">
+            <div class="mb-2 text-xs font-semibold tracking-wider text-sub uppercase">
+              Leaderboard Ghost Race (Exact Words)
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-6 text-base sm:gap-12 sm:text-lg">
+              {/* Challenger */}
+              <div class="flex flex-col items-center">
+                <span class="text-xs text-sub">You</span>
+                <span class="text-2xl font-bold text-text sm:text-3xl">
+                  {props.result.wpm}
+                </span>
+                <span class="text-xs text-sub">WPM ({props.result.acc}%)</span>
+              </div>
+
+              {/* Difference Badge */}
+              <div class="flex flex-col items-center">
+                <span
+                  class={cn(
+                    "rounded-full px-4 py-1.5 text-sm font-bold sm:text-base",
+                    isVictory
+                      ? "bg-main/20 text-main"
+                      : "bg-error/20 text-error",
+                  )}
+                >
+                  {isVictory
+                    ? `Victory (+${delta} WPM)`
+                    : `Defeat (${delta} WPM)`}
+                </span>
+              </div>
+
+              {/* Opponent */}
+              <div class="flex flex-col items-center">
+                <span class="text-xs text-sub">
+                  #{g().rank} {g().name}
+                </span>
+                <span class="text-2xl font-bold text-text sm:text-3xl">
+                  {g().wpm}
+                </span>
+                <span class="text-xs text-sub">WPM ({g().acc}%)</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div class="mt-4 flex justify-center gap-3">
+              <Button
+                variant="button"
+                text="Race Again"
+                fa={{ icon: "fa-redo" }}
+                onClick={() =>
+                  void restartTest({ withSameWordset: true, noAnim: true })
+                }
+              />
+              <Button
+                variant="text"
+                text="Exit Ghost Race"
+                fa={{ icon: "fa-times" }}
+                onClick={() => {
+                  clearGhostRun();
+                  void restartTest();
+                }}
+              />
+            </div>
+          </div>
+        );
+      }}
     </Show>
   );
 }

@@ -1,9 +1,14 @@
-import { createMemo } from "solid-js";
+import { createMemo, Show } from "solid-js";
 
 import { useActiveTagsLiveQuery } from "../../../../collections/tags";
 import { getConfig } from "../../../../config/store";
 import { showCommandline } from "../../../../states/commandline";
 import { getCustomTextIndicator, getFormatting } from "../../../../states/core";
+import {
+  clearGhostRun,
+  getActiveGhostRun,
+  isGhostRaceActive,
+} from "../../../../states/ghost-race";
 import { hotkeys } from "../../../../states/hotkeys";
 import {
   isFocusMode,
@@ -15,6 +20,7 @@ import {
   wordsHaveTab,
 } from "../../../../states/test";
 import { getActiveFunboxNames } from "../../../../test/funbox/list";
+import { restartTest } from "../../../../test/test-logic";
 import { cn } from "../../../../utils/cn";
 import {
   getLanguageDisplayString,
@@ -35,6 +41,7 @@ export function TestModesNotice() {
         },
       )}
     >
+      <GhostRace />
       <Repeated />
       <ResultSaving />
       <QuickRestart />
@@ -59,6 +66,32 @@ export function TestModesNotice() {
       <OppositeShift />
       <Tags />
     </div>
+  );
+}
+
+function GhostRace() {
+  const ghost = getActiveGhostRun;
+  return (
+    <Show when={isGhostRaceActive() && ghost()}>
+      {(g) => (
+        <div class="flex items-center gap-2 rounded bg-sub-alt px-3 py-1 font-semibold text-main">
+          <span>
+            🏁 Ghost Race (Exact Words): Challenging {g().name} (#{g().rank} •{" "}
+            {g().wpm} WPM)
+          </span>
+          <button
+            type="button"
+            class="ml-2 cursor-pointer rounded px-2 py-0.5 text-xs text-sub transition-colors hover:bg-sub/10 hover:text-error"
+            onClick={() => {
+              clearGhostRun();
+              void restartTest();
+            }}
+          >
+            [Exit Race]
+          </button>
+        </div>
+      )}
+    </Show>
   );
 }
 

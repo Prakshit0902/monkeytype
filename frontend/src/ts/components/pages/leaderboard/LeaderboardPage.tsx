@@ -269,6 +269,7 @@ export function LeaderboardPage(): JSXElement {
                   type={getSelection().type === "weekly" ? "xp" : "speed"}
                   entries={entriesQueryData()?.entries ?? []}
                   friendsOnly={getSelection().friendsOnly}
+                  selection={getSelection()}
                   scrollToUser={scrollToUser}
                 />
               </div>

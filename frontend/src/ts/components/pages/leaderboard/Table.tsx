@@ -7,13 +7,28 @@ import { format as dateFormat } from "date-fns/format";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
 import { Accessor, createMemo, JSXElement, Show } from "solid-js";
 
+import Ape from "../../../ape";
 import { hasConnection } from "../../../collections/connections";
+import { setConfig } from "../../../config/setters";
+import { navigate } from "../../../router/navigate";
 import { bp, BreakpointKey } from "../../../states/breakpoints";
 import { getFormatting, getUserId } from "../../../states/core";
+import { setActiveGhostRun } from "../../../states/ghost-race";
+import {
+  getLastSelection,
+  Selection,
+} from "../../../states/leaderboard-selection";
+import {
+  showErrorNotification,
+  showNoticeNotification,
+} from "../../../states/notifications";
+import { getSnapshot } from "../../../states/snapshot";
+import { restartTest } from "../../../test/test-logic";
 import { cn } from "../../../utils/cn";
 import { secondsToString } from "../../../utils/date-and-time";
 import { Formatting } from "../../../utils/format";
 import { abbreviateNumber } from "../../../utils/numbers";
+import { Button } from "../../common/Button";
 import { Fa } from "../../common/Fa";
 import { User } from "../../common/User";
 import { DataTable, DataTableColumnDef } from "../../ui/table/DataTable";
@@ -27,6 +42,7 @@ export function Table(
     type: "speed" | "xp";
     entries: TableEntry[];
     friendsOnly: boolean;
+    selection?: Selection;
     hideHeader?: true;
   } & (
     | {
@@ -72,6 +88,7 @@ export function Table(
       format: getFormatting(),
       userOverride: props.userOverride,
       addHeader: props.userOverride !== undefined && bp().xl,
+      selection: props.selection,
     });
   });
   const xpColumns = createMemo(() =>
@@ -242,12 +259,22 @@ function getSpeedColumns({
   format,
   userOverride,
   addHeader,
+  selection,
 }: {
   friendsOnly: boolean;
   format: Formatting;
   userOverride?: Accessor<JSXElement>;
   addHeader?: boolean;
+  selection?: Selection;
 }): DataTableColumnDef<SpeedEntry>[] {
+  const currentSelection = selection ?? getLastSelection();
+  const isGhostRaceSupported =
+    currentSelection !== undefined &&
+    "mode" in currentSelection &&
+    currentSelection.mode === "time" &&
+    (currentSelection.mode2 === "15" || currentSelection.mode2 === "60") &&
+    currentSelection.language === "english";
+
   const defineColumn = createColumnHelper<SpeedEntry>().accessor;
   const columns = [
     friendsRankColumn() as DataTableColumnDef<SpeedEntry>,
@@ -310,6 +337,98 @@ function getSpeedColumns({
       },
     }),
   ];
+
+  if (isGhostRaceSupported) {
+    columns.push(
+      defineColumn("rank", {
+        id: "race",
+        header: () => <Fa icon="fa-flag-checkered" />,
+        cell: (info) => {
+          const rank = () => info.row.original.rank;
+          const isUserPremium = () => getSnapshot()?.isPremium === true;
+          const isTop5 = () => rank() <= 5;
+
+          return (
+            <Show when={rank() >= 1 && rank() <= 10}>
+              <Show
+                when={!isTop5() || isUserPremium()}
+                fallback={
+                  <Button
+                    variant="text"
+                    class="text-sub hover:text-text"
+                    fa={{ icon: "fa-lock" }}
+                    balloon={{
+                      text: "Supporter tier required for top 5",
+                      position: "left",
+                    }}
+                    onClick={() => {
+                      showNoticeNotification(
+                        "Ranks 1-5 require Monkeytype Supporter status",
+                      );
+                    }}
+                  />
+                }
+              >
+                <Button
+                  variant="text"
+                  class={cn(
+                    "hover:text-main",
+                    isTop5() ? "font-bold text-main" : "text-sub",
+                  )}
+                  fa={{ icon: "fa-flag-checkered" }}
+                  balloon={{
+                    text: isTop5()
+                      ? "Race Exact Words (Supporter)"
+                      : "Race Exact Words",
+                    position: "left",
+                  }}
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const mode2 =
+                          currentSelection?.mode2 === "60" ? "60" : "15";
+                        const response = await Ape.leaderboards.getGhostRun({
+                          params: {
+                            mode: "time",
+                            mode2,
+                            language: "english",
+                            rank: rank(),
+                          },
+                        });
+                        if (response.status === 200) {
+                          setActiveGhostRun(response.body.data);
+                          setConfig("mode", "time");
+                          setConfig("time", mode2 === "60" ? 60 : 15);
+                          setConfig("language", "english");
+                          await navigate({ to: "/" });
+                          void restartTest({ noAnim: true });
+                        } else if (response.status === 403) {
+                          showNoticeNotification(
+                            "Ranks 1-5 require Monkeytype Supporter status",
+                          );
+                        } else {
+                          showErrorNotification("Failed to load ghost run");
+                        }
+                      } catch {
+                        showErrorNotification("Failed to load ghost run");
+                      }
+                    })();
+                  }}
+                />
+              </Show>
+            </Show>
+          );
+        },
+        meta: {
+          align: "center",
+          headerMeta: {
+            "aria-label": "Ghost race",
+            "data-balloon-pos": "down",
+          },
+        },
+      }) as DataTableColumnDef<SpeedEntry>,
+    );
+  }
 
   //remove first column if not friendsOnly
   if (!friendsOnly) {
