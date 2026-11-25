@@ -100,6 +100,7 @@ const ResultBaseSchema = z.object({
   difficulty: DifficultySchema.optional(),
   numbers: z.boolean().optional(),
   punctuation: z.boolean().optional(),
+  words: z.array(z.string()).optional(),
 });
 
 export const ResultSchema = ResultBaseSchema.extend({

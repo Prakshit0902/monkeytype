@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ChartDataSchema } from "./results";
 
 const FriendsRankSchema = z
   .number()
@@ -21,8 +22,29 @@ export const LeaderboardEntrySchema = z.object({
   friendsRank: FriendsRankSchema,
   badgeId: z.number().int().optional(),
   isPremium: z.boolean().optional(),
+  words: z.array(z.string()).optional(),
 });
 export type LeaderboardEntry = z.infer<typeof LeaderboardEntrySchema>;
+
+export const LeaderboardGhostRunSchema = z.object({
+  rank: z.number().int().min(1).max(10),
+  uid: z.string(),
+  name: z.string(),
+  discordId: z.string().optional(),
+  discordAvatar: z.string().optional(),
+  badgeId: z.number().int().optional(),
+  isPremium: z.boolean().optional(),
+  wpm: z.number().nonnegative(),
+  acc: z.number().nonnegative(),
+  consistency: z.number().nonnegative().optional(),
+  chartData: ChartDataSchema.or(z.literal("toolong")),
+  words: z.array(z.string()).min(1),
+  mode: z.literal("time"),
+  mode2: z.enum(["15", "60"]),
+  language: z.string(),
+  timestamp: z.number().int().nonnegative(),
+});
+export type LeaderboardGhostRun = z.infer<typeof LeaderboardGhostRunSchema>;
 
 export const RedisDailyLeaderboardEntrySchema = LeaderboardEntrySchema.omit({
   rank: true,

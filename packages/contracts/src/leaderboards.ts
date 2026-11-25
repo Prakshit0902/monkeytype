@@ -8,6 +8,7 @@ import {
 } from "./util/api";
 import {
   LeaderboardEntrySchema,
+  LeaderboardGhostRunSchema,
   XpLeaderboardEntrySchema,
 } from "@monkeytype/schemas/leaderboards";
 import { Mode2Schema, ModeSchema } from "@monkeytype/schemas/shared";
@@ -148,6 +149,21 @@ export type GetWeeklyXpLeaderboardRankResponse = z.infer<
 
 //--------------------------------------------------------------------------
 
+export const GetGhostRunParamsSchema = z.object({
+  mode: z.literal("time"),
+  mode2: z.enum(["15", "60"]),
+  language: z.literal("english"),
+  rank: z.coerce.number().int().min(1).max(10),
+});
+export type GetGhostRunParams = z.infer<typeof GetGhostRunParamsSchema>;
+
+export const GetGhostRunResponseSchema = responseWithData(
+  LeaderboardGhostRunSchema,
+);
+export type GetGhostRunResponse = z.infer<typeof GetGhostRunResponseSchema>;
+
+//--------------------------------------------------------------------------
+
 const c = initContract();
 export const leaderboardsContract = c.router(
   {
@@ -247,6 +263,20 @@ export const leaderboardsContract = c.router(
             "Weekly XP leaderboards are not available at this time.",
         },
       }),
+    },
+    getGhostRun: {
+      summary: "get leaderboard ghost run",
+      description: "Get leaderboard ghost run telemetry and exact wordset.",
+      method: "GET",
+      path: "/ghost-race/:mode/:mode2/:language/:rank",
+      pathParams: GetGhostRunParamsSchema,
+      responses: {
+        200: GetGhostRunResponseSchema,
+        403: MonkeyClientError.describe("Supporter tier required for top 5"),
+        404: MonkeyClientError.describe(
+          "Leaderboard entry or telemetry not found",
+        ),
+      },
     },
   },
   {
