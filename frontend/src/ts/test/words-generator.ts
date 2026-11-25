@@ -33,6 +33,7 @@ import {
   isRepeated,
   setCurrentQuote,
 } from "../states/test";
+import { getActiveGhostRun, isGhostRaceActive } from "../states/ghost-race";
 import * as TestWords from "./test-words";
 
 //pin implementation
@@ -636,6 +637,21 @@ export async function generateWords(
 
   isCurrentlyUsingFunboxSection = isFunboxActiveWithFunction("pullSection");
 
+  if (isGhostRaceActive()) {
+    const ghost = getActiveGhostRun();
+    if (ghost) {
+      currentWordset = await withWords(ghost.words);
+      ret.words = [...ghost.words];
+      ret.sectionIndexes = ghost.words.map((_, idx) => idx);
+      previousGetNextWordReturns = ghost.words.map((w, idx) => ({
+        word: w,
+        wordRaw: w,
+        sectionIndex: idx,
+      }));
+      return ret;
+    }
+  }
+
   const wordOrder = getWordOrder();
   console.debug("Word order", wordOrder);
 
@@ -768,6 +784,20 @@ export async function getNextWord(
 
   if (currentLanguage === null) {
     throw new WordGenError("Current language is null");
+  }
+
+  if (isGhostRaceActive()) {
+    const ghost = getActiveGhostRun();
+    if (ghost && wordIndex < ghost.words.length) {
+      const w = ghost.words[wordIndex] as string;
+      const res: GetNextWordReturn = {
+        word: w,
+        wordRaw: w,
+        sectionIndex: wordIndex,
+      };
+      previousGetNextWordReturns.push(res);
+      return res;
+    }
   }
 
   //because quote test can be repeated in the middle of a test

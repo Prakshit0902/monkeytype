@@ -38,6 +38,7 @@ import { showConfetti } from "../elements/confetti";
 import * as AdController from "../controllers/ad-controller";
 import * as Arrays from "../utils/arrays";
 import { getGlarsesMode } from "../states/glarses-mode";
+import { isGhostRaceActive } from "../states/ghost-race";
 import { getSarcasticResultMessage } from "../states/sarcastic-result-message";
 import { closeResultWords, toggleResultWords } from "./words-history";
 import { getCustomTextIndicator, isAuthenticated } from "../states/core";
@@ -177,7 +178,11 @@ export function startTest(now: number): boolean {
   }
 
   try {
-    if (Config.paceCaret !== "off" || (Config.repeatedPace && isPaceRepeat())) {
+    if (
+      Config.paceCaret !== "off" ||
+      (Config.repeatedPace && isPaceRepeat()) ||
+      isGhostRaceActive()
+    ) {
       PaceCaret.start();
     }
   } catch (e) {}
@@ -847,6 +852,7 @@ function buildCompletedEvent(eventLog: EventLog): CompletedResult {
     keySpacing: keypressSpacing,
     keyDuration: getKeypressDurations(eventLog),
     keyOverlap: getKeypressOverlap(eventLog),
+    words: TestWords.words.get().map((w) => w.text),
   };
 
   if (completedEvent.mode !== "custom") delete completedEvent.customText;
@@ -908,6 +914,11 @@ export async function finish(difficultyFailed = false): Promise<void> {
   }
 
   let dontSave = false;
+
+  if (isGhostRaceActive()) {
+    setIsRepeated(true);
+    dontSave = true;
+  }
 
   if (countUndefined(ce) > 0) {
     console.log(ce);

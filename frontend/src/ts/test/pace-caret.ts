@@ -21,11 +21,13 @@ import {
   isTestActive,
   setPaceCaretWpm,
 } from "../states/test";
+import { getActiveGhostRun, isGhostRaceActive } from "../states/ghost-race";
 
 type Settings = {
   wpm: number;
   cps: number;
   spc: number;
+  wpmCurve?: number[];
   correction: number;
   currentWordIndex: number;
   currentLetterIndex: number;
@@ -64,7 +66,9 @@ export function setLastTestWpm(wpm: number): void {
 }
 
 export function resetCaretPosition(): void {
-  if (Config.paceCaret === "off" && !isPaceRepeat()) return;
+  if (Config.paceCaret === "off" && !isPaceRepeat() && !isGhostRaceActive()) {
+    return;
+  }
   if (Config.mode === "zen") return;
 
   caret?.hide();
@@ -84,7 +88,17 @@ export async function init(): Promise<void> {
   caret?.hide();
   const mode2 = Misc.getMode2(Config, getCurrentQuote());
   let wpm = 0;
-  if (Config.paceCaret === "pb") {
+  let wpmCurve: number[] | undefined = undefined;
+
+  if (isGhostRaceActive()) {
+    const ghost = getActiveGhostRun();
+    if (ghost) {
+      wpm = ghost.wpm;
+      if (ghost.chartData !== "toolong" && ghost.chartData?.wpm?.length > 0) {
+        wpmCurve = ghost.chartData.wpm;
+      }
+    }
+  } else if (Config.paceCaret === "pb") {
     wpm =
       DB.getLocalPB(
         Config.mode,
@@ -129,6 +143,7 @@ export async function init(): Promise<void> {
     wpm: wpm,
     cps: cps,
     spc: spc,
+    wpmCurve,
     correction: 0,
     currentWordIndex: 0,
     currentLetterIndex: 0,
@@ -167,14 +182,20 @@ export async function update(expectedStepEnd: number): Promise<void> {
       },
     });
 
+    const currentSecond = Math.floor((now - startTimestamp) / 1000);
+    const stepWpm =
+      currentSettings.wpmCurve &&
+      currentSecond < currentSettings.wpmCurve.length
+        ? (currentSettings.wpmCurve[currentSecond] ?? currentSettings.wpm)
+        : currentSettings.wpm;
+    const stepSpc = stepWpm > 0 ? 12 / stepWpm : currentSettings.spc;
+
     currentSettings.timeout = setTimeout(
       () => {
         if (settings !== currentSettings) return;
-        update(expectedStepEnd + (currentSettings.spc ?? 0) * 1000).catch(
-          () => {
-            if (settings === currentSettings) settings = null;
-          },
-        );
+        update(expectedStepEnd + stepSpc * 1000).catch(() => {
+          if (settings === currentSettings) settings = null;
+        });
       },
       Math.max(0, duration),
     );
