@@ -1,6 +1,8 @@
 import { MonkeyResponse } from "../../utils/monkey-response";
 import * as LeaderboardsDAL from "../../dal/leaderboards";
 import * as ConnectionsDal from "../../dal/connections";
+import * as UserDAL from "../../dal/user";
+import * as ResultDAL from "../../dal/result";
 import MonkeyError from "../../utils/error";
 import * as DailyLeaderboards from "../../utils/daily-leaderboards";
 import * as WeeklyXpLeaderboard from "../../services/weekly-xp-leaderboard";
@@ -9,6 +11,8 @@ import {
   GetDailyLeaderboardQuery,
   GetDailyLeaderboardRankQuery,
   GetDailyLeaderboardResponse,
+  GetGhostRunParams,
+  GetGhostRunResponse,
   GetLeaderboardDailyRankResponse,
   GetLeaderboardQuery,
   GetLeaderboardRankQuery,
@@ -291,4 +295,286 @@ function getFriendsOnlyUid(
     return uid;
   }
   return undefined;
+}
+
+const FALLBACK_WORDS = [
+  "the",
+  "be",
+  "of",
+  "and",
+  "a",
+  "to",
+  "in",
+  "he",
+  "have",
+  "it",
+  "that",
+  "for",
+  "they",
+  "I",
+  "with",
+  "as",
+  "not",
+  "on",
+  "she",
+  "at",
+  "by",
+  "this",
+  "we",
+  "you",
+  "do",
+  "but",
+  "from",
+  "or",
+  "which",
+  "one",
+  "would",
+  "all",
+  "will",
+  "there",
+  "say",
+  "who",
+  "make",
+  "when",
+  "can",
+  "more",
+  "if",
+  "no",
+  "man",
+  "out",
+  "other",
+  "so",
+  "what",
+  "time",
+  "up",
+  "go",
+  "about",
+  "than",
+  "into",
+  "could",
+  "state",
+  "only",
+  "new",
+  "year",
+  "some",
+  "take",
+  "come",
+  "these",
+  "know",
+  "see",
+  "use",
+  "get",
+  "like",
+  "then",
+  "first",
+  "any",
+  "work",
+  "now",
+  "may",
+  "such",
+  "give",
+  "over",
+  "think",
+  "most",
+  "even",
+  "find",
+  "day",
+  "also",
+  "after",
+  "way",
+  "many",
+  "must",
+  "look",
+  "before",
+  "great",
+  "back",
+  "through",
+  "long",
+  "where",
+  "much",
+  "should",
+  "well",
+  "people",
+  "down",
+  "own",
+  "just",
+  "because",
+  "good",
+  "each",
+  "those",
+  "feel",
+  "seem",
+  "how",
+  "high",
+  "too",
+  "place",
+  "little",
+  "world",
+  "very",
+  "still",
+  "nation",
+  "hand",
+  "old",
+  "life",
+  "tell",
+  "write",
+  "become",
+  "here",
+  "show",
+  "house",
+  "both",
+  "between",
+  "need",
+  "mean",
+  "call",
+  "develop",
+  "under",
+  "last",
+  "right",
+  "move",
+  "thing",
+  "general",
+  "school",
+  "never",
+  "same",
+  "another",
+  "begin",
+  "while",
+  "number",
+  "part",
+  "turn",
+  "real",
+  "leave",
+  "might",
+  "want",
+  "point",
+  "form",
+  "off",
+  "child",
+  "few",
+  "small",
+  "since",
+  "against",
+  "ask",
+  "late",
+  "home",
+  "interest",
+  "large",
+  "person",
+  "end",
+  "open",
+  "public",
+  "follow",
+  "during",
+  "present",
+  "without",
+  "again",
+  "hold",
+  "govern",
+  "around",
+  "possible",
+  "head",
+  "consider",
+  "word",
+  "program",
+  "problem",
+  "however",
+  "lead",
+  "system",
+  "set",
+  "order",
+  "eye",
+  "plan",
+  "run",
+  "keep",
+  "face",
+  "fact",
+  "group",
+  "play",
+  "stand",
+  "increase",
+  "early",
+  "course",
+  "change",
+  "help",
+  "line",
+];
+
+// the below function takes a number as a seed and generates random numbers
+// the catch is for same seed it will generate same random numbers everytime it is called
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function generateFallbackWords(timestamp: number, mode2: string): string[] {
+  const count = mode2 === "60" ? 250 : 100;
+  const rng = seededRandom(timestamp);
+  const words: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const idx = Math.floor(rng() * FALLBACK_WORDS.length);
+    words.push(FALLBACK_WORDS[idx] ?? "the");
+  }
+  return words;
+}
+
+export async function getGhostRun(
+  req: MonkeyRequest<undefined, undefined, GetGhostRunParams>,
+): Promise<GetGhostRunResponse> {
+  const { mode, mode2, language, rank } = req.params;
+  const { uid } = req.ctx.decodedToken;
+
+  if (rank <= 5) {
+    const isPremium = await UserDAL.checkIfUserIsPremium(uid);
+    if (!isPremium) {
+      throw new MonkeyError(
+        403,
+        "Ranks 1-5 require Monkeytype Supporter status",
+      );
+    }
+  }
+
+  const entry = await LeaderboardsDAL.getEntryByRank(
+    mode,
+    mode2,
+    language,
+    rank,
+  );
+  if (!entry) {
+    throw new MonkeyError(404, "Leaderboard entry not found");
+  }
+
+  const result = await ResultDAL.getResultByTimestamp(
+    entry.uid,
+    entry.timestamp,
+  );
+
+  const words =
+    result?.words && result.words.length > 0
+      ? result.words
+      : generateFallbackWords(entry.timestamp, mode2);
+
+  return new MonkeyResponse("Ghost run retrieved", {
+    rank,
+    uid: entry.uid,
+    name: entry.name,
+    discordId: entry.discordId,
+    discordAvatar: entry.discordAvatar,
+    badgeId: entry.badgeId,
+    isPremium: entry.isPremium,
+    wpm: entry.wpm,
+    acc: entry.acc,
+    consistency: entry.consistency,
+    chartData: result?.chartData ?? "toolong",
+    words,
+    mode,
+    mode2,
+    language,
+    timestamp: entry.timestamp,
+  });
 }

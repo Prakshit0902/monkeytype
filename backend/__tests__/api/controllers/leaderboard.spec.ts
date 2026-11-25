@@ -3,6 +3,8 @@ import { setup } from "../../__testData__/controller-test";
 import { ObjectId } from "mongodb";
 import * as LeaderboardDal from "../../../src/dal/leaderboards";
 import * as ConnectionsDal from "../../../src/dal/connections";
+import * as UserDal from "../../../src/dal/user";
+import * as ResultDal from "../../../src/dal/result";
 import * as DailyLeaderboards from "../../../src/utils/daily-leaderboards";
 import * as WeeklyXpLeaderboard from "../../../src/services/weekly-xp-leaderboard";
 import * as Configuration from "../../../src/init/configuration";
@@ -1446,6 +1448,183 @@ describe("Loaderboard Controller", () => {
         .expect(404);
 
       expect(body.message).toEqual("XP leaderboard for this week not found.");
+    });
+  });
+
+  describe("get ghost run", () => {
+    const checkIfUserIsPremiumMock = vi.spyOn(UserDal, "checkIfUserIsPremium");
+    const getEntryByRankMock = vi.spyOn(LeaderboardDal, "getEntryByRank");
+    const getResultByTimestampMock = vi.spyOn(
+      ResultDal,
+      "getResultByTimestamp",
+    );
+
+    beforeEach(() => {
+      checkIfUserIsPremiumMock.mockClear();
+      getEntryByRankMock.mockClear();
+      getResultByTimestampMock.mockClear();
+    });
+
+    it("should allow free user to fetch rank 6-10 with stored words", async () => {
+      checkIfUserIsPremiumMock.mockResolvedValue(false);
+      getEntryByRankMock.mockResolvedValue({
+        _id: new ObjectId(),
+        rank: 7,
+        uid: "user7",
+        name: "speedy",
+        wpm: 120,
+        acc: 98,
+        raw: 125,
+        consistency: 85,
+        timestamp: 1600000000,
+        discordId: "disc123",
+        discordAvatar: "avatar123",
+        badgeId: 1,
+        isPremium: false,
+      });
+      // oxlint-disable-next-line no-explicit-any
+      getResultByTimestampMock.mockResolvedValue({
+        words: ["practice", "makes", "perfect"],
+        chartData: {
+          wpm: [100, 120],
+          burst: [110, 125],
+          err: [0, 0],
+        },
+      } as any);
+
+      const { body } = await mockApp
+        .get("/leaderboards/ghost-race/time/15/english/7")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(200);
+
+      expect(body.message).toEqual("Ghost run retrieved");
+      expect(body.data).toEqual({
+        rank: 7,
+        uid: "user7",
+        name: "speedy",
+        discordId: "disc123",
+        discordAvatar: "avatar123",
+        badgeId: 1,
+        isPremium: false,
+        wpm: 120,
+        acc: 98,
+        consistency: 85,
+        chartData: {
+          wpm: [100, 120],
+          burst: [110, 125],
+          err: [0, 0],
+        },
+        words: ["practice", "makes", "perfect"],
+        mode: "time",
+        mode2: "15",
+        language: "english",
+        timestamp: 1600000000,
+      });
+      expect(getEntryByRankMock).toHaveBeenCalledWith(
+        "time",
+        "15",
+        "english",
+        7,
+      );
+      expect(getResultByTimestampMock).toHaveBeenCalledWith(
+        "user7",
+        1600000000,
+      );
+    });
+
+    it("should generate deterministic fallback words if historical run lacks words", async () => {
+      checkIfUserIsPremiumMock.mockResolvedValue(false);
+      getEntryByRankMock.mockResolvedValue({
+        _id: new ObjectId(),
+        rank: 8,
+        uid: "user8",
+        name: "retro",
+        wpm: 110,
+        acc: 97,
+        raw: 115,
+        timestamp: 1555555555,
+      });
+      getResultByTimestampMock.mockResolvedValue(null);
+
+      const { body } = await mockApp
+        .get("/leaderboards/ghost-race/time/15/english/8")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(200);
+
+      expect(body.message).toEqual("Ghost run retrieved");
+      expect(body.data.rank).toEqual(8);
+      expect(body.data.words).toBeDefined();
+      expect(body.data.words.length).toBe(100);
+      expect(body.data.chartData).toEqual("toolong");
+
+      // Verify deterministic fallback: subsequent call produces identical words
+      const { body: secondBody } = await mockApp
+        .get("/leaderboards/ghost-race/time/15/english/8")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(200);
+
+      expect(secondBody.data.words).toEqual(body.data.words);
+    });
+
+    it("should return 403 for free user requesting rank 1-5", async () => {
+      checkIfUserIsPremiumMock.mockResolvedValue(false);
+
+      const { body } = await mockApp
+        .get("/leaderboards/ghost-race/time/15/english/3")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(403);
+
+      expect(body.message).toEqual(
+        "Ranks 1-5 require Monkeytype Supporter status",
+      );
+      expect(getEntryByRankMock).not.toHaveBeenCalled();
+    });
+
+    it("should allow premium user to fetch rank 1-5", async () => {
+      checkIfUserIsPremiumMock.mockResolvedValue(true);
+      getEntryByRankMock.mockResolvedValue({
+        _id: new ObjectId(),
+        rank: 1,
+        uid: "champion",
+        name: "champion",
+        wpm: 220,
+        acc: 100,
+        raw: 225,
+        consistency: 95,
+        timestamp: 1700000000,
+        isPremium: true,
+      });
+      // oxlint-disable-next-line no-explicit-any
+      getResultByTimestampMock.mockResolvedValue({
+        words: ["fastest", "typer", "alive"],
+        chartData: {
+          wpm: [200, 220],
+          burst: [210, 225],
+          err: [0, 0],
+        },
+      } as any);
+
+      const { body } = await mockApp
+        .get("/leaderboards/ghost-race/time/15/english/1")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(200);
+
+      expect(body.message).toEqual("Ghost run retrieved");
+      expect(body.data.rank).toEqual(1);
+      expect(body.data.words).toEqual(["fastest", "typer", "alive"]);
+      expect(checkIfUserIsPremiumMock).toHaveBeenCalledWith(uid);
+    });
+
+    it("should return 404 when leaderboard entry is not found", async () => {
+      checkIfUserIsPremiumMock.mockResolvedValue(false);
+      getEntryByRankMock.mockResolvedValue(null);
+
+      const { body } = await mockApp
+        .get("/leaderboards/ghost-race/time/15/english/9")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(404);
+
+      expect(body.message).toEqual("Leaderboard entry not found");
     });
   });
 });

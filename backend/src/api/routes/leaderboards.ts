@@ -29,4 +29,7 @@ export default s.router(leaderboardsContract, {
     handler: async (r) =>
       callController(LeaderboardController.getWeeklyXpLeaderboardRank)(r),
   },
+  getGhostRun: {
+    handler: async (r) => callController(LeaderboardController.getGhostRun)(r),
+  },
 });

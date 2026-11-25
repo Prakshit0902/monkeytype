@@ -129,6 +129,15 @@ export async function getCount(
   }
 }
 
+export async function getEntryByRank(
+  mode: string,
+  mode2: string,
+  language: string,
+  rank: number,
+): Promise<DBLeaderboardEntry | null> {
+  return await getCollection({ language, mode, mode2 }).findOne({ rank });
+}
+
 export async function getRank(
   mode: string,
   mode2: string,

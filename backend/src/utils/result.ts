@@ -51,6 +51,7 @@ export function buildDbResult(
     bailedOut: ce.bailedOut,
     blindMode: ce.blindMode,
     name: userName,
+    words: ce.words,
   };
 
   //compress object by omitting default values. Frontend will add them back after reading
@@ -69,6 +70,7 @@ export function buildDbResult(
   if (ce.afkDuration === 0) delete res.afkDuration;
   if (ce.tags.length === 0) delete res.tags;
   if (res.isPb === false) delete res.isPb;
+  if (res.words === undefined || res.words.length === 0) delete res.words;
 
   return res;
 }
