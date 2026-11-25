@@ -28,6 +28,7 @@ type Settings = {
   cps: number;
   spc: number;
   wpmCurve?: number[];
+  burstCurve?: number[];
   correction: number;
   currentWordIndex: number;
   currentLetterIndex: number;
@@ -89,13 +90,19 @@ export async function init(): Promise<void> {
   const mode2 = Misc.getMode2(Config, getCurrentQuote());
   let wpm = 0;
   let wpmCurve: number[] | undefined = undefined;
+  let burstCurve: number[] | undefined = undefined;
 
   if (isGhostRaceActive()) {
     const ghost = getActiveGhostRun();
     if (ghost) {
       wpm = ghost.wpm;
-      if (ghost.chartData !== "toolong" && ghost.chartData?.wpm?.length > 0) {
-        wpmCurve = ghost.chartData.wpm;
+      if (ghost.chartData !== "toolong" && ghost.chartData !== undefined) {
+        if (ghost.chartData.burst.length > 0) {
+          burstCurve = ghost.chartData.burst;
+        }
+        if (ghost.chartData.wpm.length > 0) {
+          wpmCurve = ghost.chartData.wpm;
+        }
       }
     }
   } else if (Config.paceCaret === "pb") {
@@ -144,6 +151,7 @@ export async function init(): Promise<void> {
     cps: cps,
     spc: spc,
     wpmCurve,
+    burstCurve,
     correction: 0,
     currentWordIndex: 0,
     currentLetterIndex: 0,
@@ -183,11 +191,20 @@ export async function update(expectedStepEnd: number): Promise<void> {
     });
 
     const currentSecond = Math.floor((now - startTimestamp) / 1000);
+    const burst =
+      currentSettings.burstCurve &&
+      currentSecond < currentSettings.burstCurve.length
+        ? currentSettings.burstCurve[currentSecond]
+        : undefined;
     const stepWpm =
-      currentSettings.wpmCurve &&
-      currentSecond < currentSettings.wpmCurve.length
-        ? (currentSettings.wpmCurve[currentSecond] ?? currentSettings.wpm)
-        : currentSettings.wpm;
+      burst !== undefined
+        ? burst > 0
+          ? burst
+          : Math.max(10, currentSettings.wpm * 0.25)
+        : currentSettings.wpmCurve &&
+            currentSecond < currentSettings.wpmCurve.length
+          ? (currentSettings.wpmCurve[currentSecond] ?? currentSettings.wpm)
+          : currentSettings.wpm;
     const stepSpc = stepWpm > 0 ? 12 / stepWpm : currentSettings.spc;
 
     currentSettings.timeout = setTimeout(
@@ -291,7 +308,16 @@ export function handleSpace(correct: boolean, currentWord: string): void {
 export function start(): void {
   const now = performance.now();
   startTimestamp = now;
-  void update((settings?.spc ?? 0) * 1000);
+  const initialBurst =
+    settings?.burstCurve && settings.burstCurve.length > 0
+      ? settings.burstCurve[0]
+      : undefined;
+  const initialWpm =
+    initialBurst !== undefined && initialBurst > 0
+      ? initialBurst
+      : (settings?.wpm ?? 0);
+  const initialSpc = initialWpm > 0 ? 12 / initialWpm : (settings?.spc ?? 0);
+  void update(initialSpc * 1000);
 }
 
 configEvent.subscribe(({ key }) => {

@@ -3,7 +3,8 @@ import GeorgeQueue from "../queues/george-queue";
 import * as LeaderboardsDAL from "../dal/leaderboards";
 import { getCachedConfiguration } from "../init/configuration";
 
-const CRON_SCHEDULE = "30 14/15 * * * *";
+// const CRON_SCHEDULE = "30 14/15 * * * *";
+const CRON_SCHEDULE = "0 * * * * *";
 const RECENT_AGE_MINUTES = 10;
 const RECENT_AGE_MILLISECONDS = RECENT_AGE_MINUTES * 60 * 1000;
 
