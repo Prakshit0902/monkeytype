@@ -552,6 +552,9 @@ export async function getGhostRun(
   const result = await ResultDAL.getResultByTimestamp(
     entry.uid,
     entry.timestamp,
+    mode,
+    mode2,
+    entry.wpm,
   );
 
   const words =

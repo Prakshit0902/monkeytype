@@ -641,10 +641,10 @@ export async function generateWords(
     const ghost = getActiveGhostRun();
     if (ghost) {
       currentWordset = await withWords(ghost.words);
-      ret.words = [...ghost.words];
+      ret.words = ghost.words.map((w) => appendCommitCharacter(w));
       ret.sectionIndexes = ghost.words.map((_, idx) => idx);
       previousGetNextWordReturns = ghost.words.map((w, idx) => ({
-        word: w,
+        word: appendCommitCharacter(w),
         wordRaw: w,
         sectionIndex: idx,
       }));
@@ -791,7 +791,7 @@ export async function getNextWord(
     if (ghost && wordIndex < ghost.words.length) {
       const w = ghost.words[wordIndex] as string;
       const res: GetNextWordReturn = {
-        word: w,
+        word: appendCommitCharacter(w),
         wordRaw: w,
         sectionIndex: wordIndex,
       };

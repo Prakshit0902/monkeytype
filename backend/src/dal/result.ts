@@ -94,10 +94,40 @@ export async function getLastResultTimestamp(uid: string): Promise<number> {
 export async function getResultByTimestamp(
   uid: string,
   timestamp: number,
+  mode?: string,
+  mode2?: string,
+  wpm?: number,
 ): Promise<DBResult | null> {
-  const result = await getResultCollection().findOne({ uid, timestamp });
-  if (result === null) return null;
-  return replaceLegacyValues(result);
+  let result = await getResultCollection().findOne({ uid, timestamp });
+  if (result !== null) return replaceLegacyValues(result);
+
+  if (mode !== undefined && mode2 !== undefined) {
+    const filter: Filter<DBResult> = {
+      uid,
+      mode: mode as DBResult["mode"],
+      mode2,
+      timestamp: { $gte: timestamp - 60000, $lte: timestamp + 60000 },
+    };
+    result = await getResultCollection().findOne(filter, {
+      sort: { timestamp: -1 },
+    });
+    if (result !== null) return replaceLegacyValues(result);
+
+    if (wpm !== undefined) {
+      const wpmFilter: Filter<DBResult> = {
+        uid,
+        mode: mode as DBResult["mode"],
+        mode2,
+        wpm,
+      };
+      result = await getResultCollection().findOne(wpmFilter, {
+        sort: { timestamp: -1 },
+      });
+      if (result !== null) return replaceLegacyValues(result);
+    }
+  }
+
+  return null;
 }
 
 type GetResultsOpts = {

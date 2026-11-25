@@ -126,7 +126,7 @@ function updatePersonalBest(
   personalBest.raw = result.rawWpm;
   personalBest.wpm = result.wpm;
   personalBest.numbers = result.numbers;
-  personalBest.timestamp = Date.now();
+  personalBest.timestamp = result.timestamp ?? Date.now();
 
   return true;
 }
@@ -155,7 +155,7 @@ function buildPersonalBest(result: Result): PersonalBest {
     raw: result.rawWpm,
     wpm: result.wpm,
     numbers: result.numbers,
-    timestamp: Date.now(),
+    timestamp: result.timestamp ?? Date.now(),
   };
 }
 

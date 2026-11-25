@@ -1529,6 +1529,9 @@ describe("Loaderboard Controller", () => {
       expect(getResultByTimestampMock).toHaveBeenCalledWith(
         "user7",
         1600000000,
+        "time",
+        "15",
+        120,
       );
     });
 
