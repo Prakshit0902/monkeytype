@@ -104,6 +104,19 @@ export const BASE_CONFIGURATION: Configuration = {
     },
   },
   connections: { enabled: false, maxPerUser: 100 },
+  rooms: {
+    enabled: false,
+    maxPlayersPerRoom: 10,
+    maxActiveRoomsPerUser: 1,
+    emptyRoomTtlSeconds: 120,
+    activeRoomTtlSeconds: 900,
+    countdownMs: 3000,
+    submitGraceMs: 2000,
+    maxWordsRoundSeconds: 300,
+    heartbeatIntervalMs: 15000,
+    heartbeatTimeoutMs: 30000,
+    validModeRules: [],
+  },
 };
 
 type BaseSchema = {
@@ -612,6 +625,83 @@ export const CONFIGURATION_FORM_SCHEMA: ObjectSchema<Configuration> = {
         maxPerUser: {
           type: "number",
           label: "Max Connections per user",
+        },
+      },
+    },
+    rooms: {
+      type: "object",
+      label: "Competitive Rooms",
+      fields: {
+        enabled: {
+          type: "boolean",
+          label: "Enabled",
+        },
+        maxPlayersPerRoom: {
+          type: "number",
+          label: "Max Players Per Room",
+          min: 2,
+        },
+        maxActiveRoomsPerUser: {
+          type: "number",
+          label: "Max Active Rooms Per User",
+          min: 1,
+        },
+        emptyRoomTtlSeconds: {
+          type: "number",
+          label: "Empty Room TTL (seconds)",
+          min: 30,
+        },
+        activeRoomTtlSeconds: {
+          type: "number",
+          label: "Active Room TTL (seconds)",
+          min: 60,
+        },
+        countdownMs: {
+          type: "number",
+          label: "Countdown Duration (ms)",
+          min: 1000,
+        },
+        submitGraceMs: {
+          type: "number",
+          label: "Submission Grace Period (ms)",
+          min: 500,
+        },
+        maxWordsRoundSeconds: {
+          type: "number",
+          label: "Max Words/Quote Round Duration (seconds)",
+          min: 60,
+        },
+        heartbeatIntervalMs: {
+          type: "number",
+          label: "WebSocket Heartbeat Interval (ms)",
+          min: 5000,
+        },
+        heartbeatTimeoutMs: {
+          type: "number",
+          label: "WebSocket Heartbeat Timeout (ms)",
+          min: 10000,
+        },
+        validModeRules: {
+          type: "array",
+          label: "Valid Mode Rules",
+          items: {
+            type: "object",
+            label: "Rule",
+            fields: {
+              language: {
+                type: "string",
+                label: "Language",
+              },
+              mode: {
+                type: "string",
+                label: "Mode",
+              },
+              mode2: {
+                type: "string",
+                label: "Secondary Mode",
+              },
+            },
+          },
         },
       },
     },

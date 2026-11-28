@@ -14,6 +14,9 @@ import { quotesContract } from "./quotes";
 import { webhooksContract } from "./webhooks";
 import { connectionsContract } from "./connections";
 
+export { roomsContract } from "./rooms";
+export { roomResultsContract } from "./room-results";
+
 const c = initContract();
 
 export const contract = c.router({

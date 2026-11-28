@@ -127,5 +127,18 @@ export const ConfigurationSchema = z.object({
     enabled: z.boolean(),
     maxPerUser: z.number().int().nonnegative(),
   }),
+  rooms: z.object({
+    enabled: z.boolean(),
+    maxPlayersPerRoom: z.number().int().min(2).max(20),
+    maxActiveRoomsPerUser: z.number().int().min(1).max(5),
+    emptyRoomTtlSeconds: z.number().int().min(30),
+    activeRoomTtlSeconds: z.number().int().min(60),
+    countdownMs: z.number().int().min(1000).max(10000),
+    submitGraceMs: z.number().int().min(500).max(10000),
+    maxWordsRoundSeconds: z.number().int().min(60),
+    heartbeatIntervalMs: z.number().int().min(5000),
+    heartbeatTimeoutMs: z.number().int().min(10000),
+    validModeRules: z.array(ValidModeRuleSchema),
+  }),
 });
 export type Configuration = z.infer<typeof ConfigurationSchema>;

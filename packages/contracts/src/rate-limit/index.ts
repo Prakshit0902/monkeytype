@@ -381,6 +381,22 @@ export const limits = {
     window: "hour",
     max: 60,
   },
+
+  // Rooms Routing, need to change the rate limits later
+  roomCreate: {
+    window: "hour",
+    max: 30,
+  },
+
+  roomLookup: {
+    window: "minute",
+    max: 20,
+  },
+
+  roomResultsGet: {
+    window: "hour",
+    max: 60,
+  },
 } satisfies Record<string, RateLimitOptions>;
 
 export type RateLimiterId = keyof typeof limits;
