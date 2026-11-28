@@ -78,6 +78,8 @@ export function Nav(): JSXElement {
   const serverConfig = useQuery(() => getServerConfigurationQueryOptions());
   const showLoginButton = (): boolean =>
     serverConfig.data?.users.signUp ?? true;
+  const showRoomsButton = (): boolean =>
+    serverConfig.data?.rooms?.enabled ?? false;
 
   return (
     <nav class={cn("z-5 flex w-full items-center gap-1 md:gap-2")}>
@@ -132,6 +134,22 @@ export function Nav(): JSXElement {
           "data-nav-item": "settings",
         }}
       />
+      <Show when={showRoomsButton()}>
+        <Button
+          variant="text"
+          fa={{
+            icon: "fa-flag-checkered",
+            fixedWidth: true,
+          }}
+          class={buttonClass()}
+          dataset={{
+            "data-nav-item": "rooms",
+          }}
+          onClick={() => {
+            showModal("RoomEntry");
+          }}
+        />
+      </Show>
       <div class="grow"></div>
       <Button
         variant="text"

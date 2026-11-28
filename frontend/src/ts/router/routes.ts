@@ -26,6 +26,7 @@ import { LoginPage } from "../components/pages/login/LoginPage";
 import { createRouterPage } from "../components/core/Page";
 import { ProfilePage } from "../components/pages/profile/ProfilePage";
 import { ProfileSearchPage } from "../components/pages/profile/ProfileSearchPage";
+import { RoomPage } from "../components/pages/room/RoomPage";
 import { SettingsPage } from "../components/pages/settings/SettingsPage";
 import { TestPage } from "../components/pages/test/TestPage";
 import {
@@ -73,6 +74,7 @@ export type PageName =
   | "accountSettings"
   | "friends"
   | "leaderboards"
+  | "room"
   | "eventLogViewer";
 
 declare module "@tanstack/solid-router" {
@@ -411,6 +413,14 @@ const friends = createRoute({
   },
 });
 
+const room = createRoute({
+  getParentRoute: () => userDataRoute,
+  path: "/room/$roomId",
+  staticData: { page: "room" },
+  component: createRouterPage(RoomPage),
+  beforeLoad: ({ context }) => signedInOnly(context.auth),
+});
+
 // dev only: the import sits behind import.meta.env.DEV so a production build
 // drops the page (and its chart code) entirely
 const EventLogViewerPage = import.meta.env.DEV
@@ -443,6 +453,7 @@ export const routeTree = root.addChildren([
     profileSearch,
     profile,
     friends,
+    room,
     eventLogViewer,
   ]),
 ]);

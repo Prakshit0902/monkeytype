@@ -25,6 +25,9 @@ export type RoomState = z.infer<typeof RoomStateSchema>;
 export const RoomModeSchema = z.enum(["time", "words", "quote", "custom"]);
 export type RoomMode = z.infer<typeof RoomModeSchema>;
 
+export const MAX_ROOM_CUSTOM_TEXT_WORDS = 1000;
+export const MAX_ROOM_CUSTOM_TEXT_CHARS = 10_000;
+
 export const RoomConfigSchema = z
   .object({
     mode: RoomModeSchema,
@@ -80,12 +83,34 @@ export const RoomConfigSchema = z
       });
     }
 
-    if (config.customText !== undefined && config.customText.limit.value <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["customText", "limit", "value"],
-        message: "Custom text must have a finite positive limit",
-      });
+    if (config.customText !== undefined) {
+      if (config.customText.limit.value <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customText", "limit", "value"],
+          message: "Custom text must have a finite positive limit",
+        });
+      }
+
+      if (config.customText.text.length > MAX_ROOM_CUSTOM_TEXT_WORDS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customText", "text"],
+          message: `Custom text cannot exceed ${MAX_ROOM_CUSTOM_TEXT_WORDS} words`,
+        });
+      }
+
+      const totalChars = config.customText.text.reduce(
+        (sum, word) => sum + word.length,
+        0,
+      );
+      if (totalChars > MAX_ROOM_CUSTOM_TEXT_CHARS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["customText", "text"],
+          message: `Custom text cannot exceed ${MAX_ROOM_CUSTOM_TEXT_CHARS} characters`,
+        });
+      }
     }
   });
 export type RoomConfig = z.infer<typeof RoomConfigSchema>;

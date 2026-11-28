@@ -117,6 +117,24 @@ describe("rooms schemas", () => {
       ).toBe(false);
     });
 
+    it("rejects oversized customText.text payloads to prevent Redis/PubSub bloat", () => {
+      const bloatedWords = Array.from({ length: 5000 }, () => "word123456");
+
+      expect(
+        RoomConfigSchema.safeParse({
+          ...baseRoomConfig,
+          mode: "custom",
+          mode2: "custom",
+          customText: {
+            text: bloatedWords,
+            mode: "repeat",
+            pipeDelimiter: false,
+            limit: { mode: "word", value: 50 },
+          },
+        }).success,
+      ).toBe(false);
+    });
+
     it("rejects infinite time/words (0) and invalid maxPlayers", () => {
       expect(
         RoomConfigSchema.safeParse({

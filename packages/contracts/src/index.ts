@@ -13,6 +13,7 @@ import { usersContract } from "./users";
 import { quotesContract } from "./quotes";
 import { webhooksContract } from "./webhooks";
 import { connectionsContract } from "./connections";
+import { roomsContract } from "./rooms";
 
 export { roomsContract } from "./rooms";
 export { roomResultsContract } from "./room-results";
@@ -34,6 +35,7 @@ export const contract = c.router({
   quotes: quotesContract,
   webhooks: webhooksContract,
   connections: connectionsContract,
+  rooms: roomsContract,
 });
 
 /**

@@ -20,6 +20,7 @@ import { QuoteRateModal } from "./QuoteRateModal";
 import { QuoteReportModal } from "./QuoteReportModal";
 import { QuoteSearchModal } from "./QuoteSearchModal";
 import { RegisterCaptchaModal } from "./RegisterCaptchaModal";
+import { RoomEntryModal } from "./RoomEntryModal";
 import { ShareTestSettings } from "./ShareTestSettings";
 import { SimpleModal } from "./SimpleModal";
 import { StreakHourOffsetModal } from "./StreakHourOffsetModal";
@@ -59,6 +60,7 @@ export function Modals(): JSXElement {
       <ForgotPasswordModal />
       <UserReportModal />
       <EditResultTagsModal />
+      <RoomEntryModal />
       <TheRestModal />
     </>
   );

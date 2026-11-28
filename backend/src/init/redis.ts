@@ -51,6 +51,18 @@ export type RedisConnectionWithCustomMethods = Redis & {
     uid: string,
     namespace: string,
   ) => Promise<void>;
+  roomCreate: (
+    keyCount: number,
+    metaKey: string,
+    codeKey: string,
+    activeRoomKey: string,
+    roomId: string,
+    code: string,
+    uid: string,
+    configJson: string,
+    nowMs: string,
+    emptyRoomTtlSeconds: string,
+  ) => Promise<[number, string, string?]>;
 };
 
 let connection: IORedis.Redis;
